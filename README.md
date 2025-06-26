@@ -9,9 +9,9 @@ It's built by [@gustavscirulis](https://github.com/gustavscirulis), and all of t
 ## Features
 
 - **Screenshot Management** – Collect and organize your UI screenshots in a visual grid layout
-- **AI-Powered Pattern Detection** – Identify UI components and patterns using OpenAI's Vision API  
-- **Smart Organization** – Search and filter your screenshots based on detected UI elements  
-- **Fast Local Storage** – All screenshots and metadata are stored locally and can be synced with iCloud  
+- **AI-Powered Pattern Detection** – Identify UI components and patterns using OpenAI's Vision API
+- **Smart Organization** – Search and filter your screenshots based on detected UI elements
+- **Fast Local Storage** – All screenshots and metadata are stored locally and can be synced with iCloud
 
 ## Installation
 
@@ -24,7 +24,7 @@ Download the latest release for your platform from the [releases](https://github
 
 ## Requirements
 
-To use the AI pattern detection feature, you'll need to add your OpenAI API key in the settings. The app uses GPT-4.1-mini for vision analysis. You can still use the app without this feature — it just won't detect patterns.
+To use the AI pattern detection feature, you'll need to add your Gemini API key in the settings. The app uses GPT-4.1-mini for vision analysis. You can still use the app without this feature — it just won't detect patterns.
 
 ## Privacy
 
@@ -38,24 +38,24 @@ SnapGrid is built with privacy in mind:
 
 SnapGrid stores files in the following locations:
 
-- **macOS**: `~/Documents/SnapGrid/`  
+- **macOS**: `~/Documents/SnapGrid/`
 - **Other platforms**: in the app's user data directory
 
 Inside that folder:
 
-- `images/` – All media files (PNG screenshots and MP4 videos)  
-- `metadata/` – JSON metadata for each media item  
+- `images/` – All media files (PNG screenshots and MP4 videos)
+- `metadata/` – JSON metadata for each media item
 - `.trash/` – Deleted items are moved here (same structure as above)
 
 ## Development
 
 SnapGrid is built with:
 
-- Electron  
-- Vite  
-- TypeScript  
-- React  
-- shadcn-ui  
+- Electron
+- Vite
+- TypeScript
+- React
+- shadcn-ui
 - Tailwind CSS
 
 ### Setting Up Development Environment
