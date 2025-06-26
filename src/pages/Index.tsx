@@ -9,49 +9,61 @@ import { Input } from "@/components/ui/input";
 import { Toaster, toast } from "sonner";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import WindowControls from "@/components/WindowControls";
-
+import { AppSidebar } from "@/components/AppSidebar";
 
 const Index = () => {
-  const { 
-    images, 
-    isUploading, 
-    isLoading, 
-    addImage, 
-    removeImage, 
-    undoDelete, 
+  const {
+    images,
+    isUploading,
+    isLoading,
+    addImage,
+    removeImage,
+    undoDelete,
     canUndo,
     importFromFilePath,
-    retryAnalysis
+    retryAnalysis,
   } = useImageStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [simulateEmptyState, setSimulateEmptyState] = useState(false);
-  const [thumbnailSize, setThumbnailSize] = useState<'small' | 'medium' | 'large' | 'xl'>('medium');
+  const [thumbnailSize, setThumbnailSize] = useState<
+    "small" | "medium" | "large" | "xl"
+  >("medium");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Load saved preferences on mount
   useEffect(() => {
     // Check if we should simulate empty state (only in dev mode)
-    const savedSetting = localStorage.getItem('dev_simulate_empty_state');
-    setSimulateEmptyState(savedSetting === 'true');
+    const savedSetting = localStorage.getItem("dev_simulate_empty_state");
+    setSimulateEmptyState(savedSetting === "true");
 
     // Load saved thumbnail size from Electron preferences
     if (window.electron?.getUserPreference) {
-      window.electron.getUserPreference('thumbnailSize', 'medium').then((result) => {
-        if (result.success && result.value) {
-          const size = result.value;
-          if (size === 'small' || size === 'medium' || size === 'large' || size === 'xl') {
-            setThumbnailSize(size);
+      window.electron
+        .getUserPreference("thumbnailSize", "medium")
+        .then((result) => {
+          if (result.success && result.value) {
+            const size = result.value;
+            if (
+              size === "small" ||
+              size === "medium" ||
+              size === "large" ||
+              size === "xl"
+            ) {
+              setThumbnailSize(size);
+            }
           }
-        }
-      }).catch(console.error);
+        })
+        .catch(console.error);
     }
   }, []);
 
   // Save thumbnail size changes to Electron preferences
   useEffect(() => {
     if (window.electron?.setUserPreference) {
-      window.electron.setUserPreference('thumbnailSize', thumbnailSize).catch(console.error);
+      window.electron
+        .setUserPreference("thumbnailSize", thumbnailSize)
+        .catch(console.error);
     }
   }, [thumbnailSize]);
 
@@ -72,32 +84,32 @@ const Index = () => {
       setSettingsOpen(true);
     },
     onZoomIn: () => {
-      setThumbnailSize(current => {
-        if (current === 'small') return 'medium';
-        if (current === 'medium') return 'large';
-        if (current === 'large') return 'xl';
-        return 'xl'; // Already at largest
+      setThumbnailSize((current) => {
+        if (current === "small") return "medium";
+        if (current === "medium") return "large";
+        if (current === "large") return "xl";
+        return "xl"; // Already at largest
       });
     },
     onZoomOut: () => {
-      setThumbnailSize(current => {
-        if (current === 'xl') return 'large';
-        if (current === 'large') return 'medium';
-        if (current === 'medium') return 'small';
-        return 'small'; // Already at smallest
+      setThumbnailSize((current) => {
+        if (current === "xl") return "large";
+        if (current === "large") return "medium";
+        if (current === "medium") return "small";
+        return "small"; // Already at smallest
       });
-    }
+    },
   });
 
   // Prevent scrolling when in empty state
   useEffect(() => {
     // Consider empty if there are no images OR we're simulating empty state
     const hasImages = images.length > 0 && !simulateEmptyState;
-    document.body.style.overflow = hasImages ? 'auto' : 'hidden';
-    
+    document.body.style.overflow = hasImages ? "auto" : "hidden";
+
     return () => {
       // Reset overflow when component unmounts
-      document.body.style.overflow = 'auto';
+      document.body.style.overflow = "auto";
     };
   }, [images.length, simulateEmptyState]);
 
@@ -108,7 +120,7 @@ const Index = () => {
       if (!items) return;
 
       for (const item of items) {
-        if (item.type.startsWith('image/')) {
+        if (item.type.startsWith("image/")) {
           event.preventDefault();
           const file = item.getAsFile();
           if (file) {
@@ -124,121 +136,139 @@ const Index = () => {
       }
     };
 
-    window.addEventListener('paste', handlePaste);
-    return () => window.removeEventListener('paste', handlePaste);
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
   }, [addImage]);
 
   useEffect(() => {
     // Set up listeners for menu-triggered events
-    const cleanupImportFiles = window.electron.onImportFiles(async (filePaths) => {
-      try {
-        // Remove the toast that shows importing status
-        
-        for (const filePath of filePaths) {
-          try {
-            // Use direct file import method
-            await importFromFilePath(filePath);
-          } catch (error) {
-            console.error(`Error importing file ${filePath}:`, error);
-            toast.error(`Failed to import file: ${filePath.split(/[\\/]/).pop()}`);
+    const cleanupImportFiles = window.electron.onImportFiles(
+      async (filePaths) => {
+        try {
+          // Remove the toast that shows importing status
+
+          for (const filePath of filePaths) {
+            try {
+              // Use direct file import method
+              await importFromFilePath(filePath);
+            } catch (error) {
+              console.error(`Error importing file ${filePath}:`, error);
+              toast.error(
+                `Failed to import file: ${filePath.split(/[\\/]/).pop()}`,
+              );
+            }
           }
+        } catch (error) {
+          console.error("Error processing import files:", error);
+          toast.error("Failed to import files");
         }
-      } catch (error) {
-        console.error('Error processing import files:', error);
-        toast.error('Failed to import files');
-      }
-    });
-    
-    const cleanupOpenStorageLocation = window.electron.onOpenStorageLocation(() => {
-      // Storage location is opened by the main process
-    });
-    
+      },
+    );
+
+    const cleanupOpenStorageLocation = window.electron.onOpenStorageLocation(
+      () => {
+        // Storage location is opened by the main process
+      },
+    );
+
     const cleanupOpenSettings = window.electron.onOpenSettings(() => {
       setSettingsOpen(true);
     });
-    
+
     // Clean up listeners on component unmount
     return () => {
       cleanupImportFiles();
       cleanupOpenStorageLocation();
       cleanupOpenSettings();
     };
-    
+
     // Initial loading of API key happens in the aiAnalysisService
     // No need to manually load from localStorage here as it's handled by the service
   }, [addImage, importFromFilePath]);
 
-  const filteredImages = images.filter(image => {
-    const query = searchQuery.toLowerCase();
-    if (query === "") return true;
-    
-    // If query starts with "vid", show all videos
-    if (query.startsWith("vid")) {
-      return image.type === "video";
-    }
-    
-    // If query starts with "img", show all images
-    if (query.startsWith("img")) {
-      return image.type === "image";
-    }
-    
-    // Otherwise, search in patterns and imageContext
-    if (image.patterns && image.patterns.length > 0) {
-      // Search in pattern names
-      const patternMatch = image.patterns.some(pattern => 
-        pattern.name.toLowerCase().includes(query)
-      );
-      
-      // Also search in imageContext if it exists at the image level
-      const contextMatch = image.imageContext ? 
-        image.imageContext.toLowerCase().includes(query) : false;
-      
-      return patternMatch || contextMatch;
-    }
-    
-    return false;
-  }).sort((a, b) => {
-    // Only sort by confidence when there's a search query and it's not a media type filter
-    const query = searchQuery.toLowerCase();
-    if (query === "" || query.startsWith("vid") || query.startsWith("img")) {
-      return 0; // Keep original order
-    }
-    
-    // Find the highest confidence score for matching patterns in each image
-    const aMaxConfidence = a.patterns?.reduce((max, pattern) => {
-      // Match in pattern name
-      const matchesPattern = pattern.name.toLowerCase().includes(query);
-      
-      if (matchesPattern) {
-        return Math.max(max, pattern.confidence);
-      }
-      return max;
-    }, 0) || 0;
-    
-    const bMaxConfidence = b.patterns?.reduce((max, pattern) => {
-      // Match in pattern name
-      const matchesPattern = pattern.name.toLowerCase().includes(query);
-      
-      if (matchesPattern) {
-        return Math.max(max, pattern.confidence);
-      }
-      return max;
-    }, 0) || 0;
-    
-    // If searching for context that matches, prioritize those images
-    if (query && a.imageContext && a.imageContext.toLowerCase().includes(query)) {
-      return -1; // a comes first
-    }
-    if (query && b.imageContext && b.imageContext.toLowerCase().includes(query)) {
-      return 1; // b comes first
-    }
-    
-    // Sort by confidence score (highest first)
-    return bMaxConfidence - aMaxConfidence;
-  });
+  const filteredImages = images
+    .filter((image) => {
+      const query = searchQuery.toLowerCase();
+      if (query === "") return true;
 
-  const handleImageClick = (image: ImageItem) => {
-  };
+      // If query starts with "vid", show all videos
+      if (query.startsWith("vid")) {
+        return image.type === "video";
+      }
+
+      // If query starts with "img", show all images
+      if (query.startsWith("img")) {
+        return image.type === "image";
+      }
+
+      // Otherwise, search in patterns and imageContext
+      if (image.patterns && image.patterns.length > 0) {
+        // Search in pattern names
+        const patternMatch = image.patterns.some((pattern) =>
+          pattern.name.toLowerCase().includes(query),
+        );
+
+        // Also search in imageContext if it exists at the image level
+        const contextMatch = image.imageContext
+          ? image.imageContext.toLowerCase().includes(query)
+          : false;
+
+        return patternMatch || contextMatch;
+      }
+
+      return false;
+    })
+    .sort((a, b) => {
+      // Only sort by confidence when there's a search query and it's not a media type filter
+      const query = searchQuery.toLowerCase();
+      if (query === "" || query.startsWith("vid") || query.startsWith("img")) {
+        return 0; // Keep original order
+      }
+
+      // Find the highest confidence score for matching patterns in each image
+      const aMaxConfidence =
+        a.patterns?.reduce((max, pattern) => {
+          // Match in pattern name
+          const matchesPattern = pattern.name.toLowerCase().includes(query);
+
+          if (matchesPattern) {
+            return Math.max(max, pattern.confidence);
+          }
+          return max;
+        }, 0) || 0;
+
+      const bMaxConfidence =
+        b.patterns?.reduce((max, pattern) => {
+          // Match in pattern name
+          const matchesPattern = pattern.name.toLowerCase().includes(query);
+
+          if (matchesPattern) {
+            return Math.max(max, pattern.confidence);
+          }
+          return max;
+        }, 0) || 0;
+
+      // If searching for context that matches, prioritize those images
+      if (
+        query &&
+        a.imageContext &&
+        a.imageContext.toLowerCase().includes(query)
+      ) {
+        return -1; // a comes first
+      }
+      if (
+        query &&
+        b.imageContext &&
+        b.imageContext.toLowerCase().includes(query)
+      ) {
+        return 1; // b comes first
+      }
+
+      // Sort by confidence score (highest first)
+      return bMaxConfidence - aMaxConfidence;
+    });
+
+  const handleImageClick = (image: ImageItem) => {};
 
   const handleDeleteImage = (id: string) => {
     removeImage(id);
@@ -248,13 +278,12 @@ const Index = () => {
   const isEmpty = images.length === 0 || simulateEmptyState;
 
   return (
-    <UploadZone 
-      onImageUpload={addImage} 
-      isUploading={isUploading}
-    >
-      <div className={`min-h-screen flex flex-col ${isEmpty ? 'overflow-hidden' : ''}`}>
+    <UploadZone onImageUpload={addImage} isUploading={isUploading}>
+      <div
+        className={`min-h-screen flex flex-col pt-8 ${isEmpty ? "overflow-hidden" : ""}`}
+      >
         <Toaster />
-        <header className="sticky top-0 z-10 bg-gray-100/90 dark:bg-zinc-900/90 backdrop-blur-lg py-4 px-6 relative">
+        <header className="sticky top-0 z-10 backdrop-blur-lg py-4 px-6">
           <div className="absolute inset-0 draggable"></div>
           <div className="relative mx-auto flex items-center">
             <div className="w-8 draggable"></div> {/* Left draggable area */}
@@ -287,31 +316,36 @@ const Index = () => {
           <WindowControls />
         </header>
 
-        <main className={`mx-auto flex-1 flex flex-col min-h-0 w-full ${isEmpty ? 'overflow-hidden' : ''}`}>
-          {isLoading ? (
-            <div className="flex justify-center items-center" style={{ height: 'calc(100vh - 4rem)' }}>
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            </div>
-          ) : (
-            <>
-              <ImageGrid 
-                images={simulateEmptyState ? [] : filteredImages} 
-                onImageClick={handleImageClick} 
-                onImageDelete={handleDeleteImage}
-                searchQuery={searchQuery}
-                onOpenSettings={() => setSettingsOpen(true)}
-                settingsOpen={settingsOpen}
-                retryAnalysis={retryAnalysis}
-                thumbnailSize={thumbnailSize}
-              />
-            </>
-          )}
-        </main>
+        <div className="flex flex-1 overflow-hidden">
+          <AppSidebar />
+          <main
+            className={`flex-1 flex flex-col min-h-0 w-full ${isEmpty ? "overflow-hidden" : ""}`}
+          >
+            {isLoading ? (
+              <div
+                className="flex justify-center items-center"
+                style={{ height: "calc(100vh - 4rem)" }}
+              >
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <>
+                <ImageGrid
+                  images={simulateEmptyState ? [] : filteredImages}
+                  onImageClick={handleImageClick}
+                  onImageDelete={handleDeleteImage}
+                  searchQuery={searchQuery}
+                  onOpenSettings={() => setSettingsOpen(true)}
+                  settingsOpen={settingsOpen}
+                  retryAnalysis={retryAnalysis}
+                  thumbnailSize={thumbnailSize}
+                />
+              </>
+            )}
+          </main>
+        </div>
 
-        <SettingsPanel
-          open={settingsOpen}
-          onOpenChange={setSettingsOpen}
-        />
+        <SettingsPanel open={settingsOpen} onOpenChange={setSettingsOpen} />
       </div>
     </UploadZone>
   );

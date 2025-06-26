@@ -81,6 +81,23 @@ interface IElectronAPI {
   onImportFiles?: (callback: (filePaths: string[]) => void) => () => void;
   onOpenStorageLocation?: (callback: () => void) => () => void;
   onOpenSettings?: (callback: () => void) => () => void;
+  
+  // File system operations
+  readDirectory?: (path: string) => Promise<{ name: string; path: string; isDirectory: boolean; isFile: boolean }[]>;
+  createDirectory?: (path: string) => Promise<boolean>;
+  deleteDirectory?: (path: string) => Promise<boolean>;
+  getHomeDirectory?: () => Promise<string>;
+  
+  // Folder management
+  loadFolders?: () => Promise<any[]>;
+  createFolder?: (folder: any) => Promise<any>;
+  updateFolder?: (id: string, updates: any) => Promise<any>;
+  deleteFolder?: (id: string) => Promise<boolean>;
+  moveFolder?: (folderId: string, newParentId?: string) => Promise<boolean>;
+  getFolderStats?: () => Promise<any>;
+  addImageToFolder?: (imageId: string, folderId: string) => Promise<boolean>;
+  removeImageFromFolder?: (imageId: string) => Promise<boolean>;
+  moveImageToFolder?: (imageId: string, folderId: string) => Promise<boolean>;
 }
 
 // Define the protocol for local file access
