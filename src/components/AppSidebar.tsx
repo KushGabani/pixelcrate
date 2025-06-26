@@ -12,6 +12,7 @@ import {
   SidebarInput,
   SidebarProvider,
 } from "./ui/sidebar";
+import logoImage from "/logo.png";
 import {
   Filter,
   Folder as FolderIcon,
@@ -286,7 +287,7 @@ export function AppSidebar() {
         <div className="flex items-center space-x-2">
           {/* Placeholder for the app icon, similar to the reference */}
           <img
-            src="/logo.png"
+            src={logoImage}
             alt="PixelCrate logo"
             className="h-7 w-7 text-emerald-500"
           />
