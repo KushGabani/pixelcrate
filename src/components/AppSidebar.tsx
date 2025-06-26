@@ -282,11 +282,11 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="pt-12">
+      <SidebarHeader className="pt-12 drag-region">
         <div className="flex items-center space-x-2">
           {/* Placeholder for the app icon, similar to the reference */}
           <img
-            src="/assets/logo.png"
+            src="/logo.png"
             alt="PixelCrate logo"
             className="h-7 w-7 text-emerald-500"
           />

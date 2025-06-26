@@ -313,7 +313,7 @@ const Index = () => {
             <Toaster />
             <WindowControls />
 
-            <header className="backdrop-blur-lg pt-10 px-6">
+            <header className="backdrop-blur-lg pt-10 px-6 drag-region">
               <div className="relative flex items-center justify-between">
                 <div className="flex-1 flex justify-center">
                   <div className="relative w-96">
