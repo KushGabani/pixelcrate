@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { ImageItem } from "@/hooks/useImageStore";
 import {
   X,
@@ -13,6 +13,7 @@ import AnimatedImageModal from "./AnimatedImageModal";
 import { motion, AnimatePresence } from "framer-motion";
 import { ImageRenderer } from "@/components/ImageRenderer";
 import Masonry from "react-masonry-css";
+import { VariableSizeList as List } from "react-window";
 import "./masonry-grid.css"; // We'll create this CSS file
 import "./text-shine.css"; // Import the text shine animation CSS
 import { hasApiKey } from "@/services/aiAnalysisService";
@@ -145,6 +146,31 @@ const ImageGrid: React.FC<ImageGridProps> = ({
     };
   }, [images.length, searchQuery]);
 
+  // Virtualization configuration
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<any>(null);
+  const [useVirtualization, setUseVirtualization] = useState(false);
+  
+  // Update container size on resize
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setContainerSize({ width: rect.width, height: rect.height });
+      }
+    };
+    
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
+  
+  // Enable virtualization only for large datasets
+  useEffect(() => {
+    setUseVirtualization(images.length > 50); // Threshold for virtualization
+  }, [images.length]);
+
   // Dynamic responsive breakpoints based on thumbnail size
   const getBreakpointColumnsObj = () => {
     switch (thumbnailSize) {
@@ -197,6 +223,51 @@ const ImageGrid: React.FC<ImageGridProps> = ({
   };
 
   const breakpointColumnsObj = getBreakpointColumnsObj();
+  
+  // Calculate column count based on current window width
+  const getColumnCount = useCallback(() => {
+    const width = containerSize.width || window.innerWidth;
+    const breakpoints = breakpointColumnsObj;
+    
+    if (width >= 1536) return breakpoints[1536] || breakpoints.default;
+    if (width >= 1280) return breakpoints[1280] || breakpoints.default;
+    if (width >= 1024) return breakpoints[1024] || breakpoints.default;
+    if (width >= 640) return breakpoints[640] || breakpoints.default;
+    if (width >= 480) return breakpoints[480] || breakpoints.default;
+    
+    return breakpoints.default;
+  }, [containerSize.width, breakpointColumnsObj]);
+  
+  // Virtualized row data for masonry
+  const virtualizedData = useMemo(() => {
+    if (!useVirtualization) return [];
+    
+    const columnCount = getColumnCount();
+    const rows: ImageItem[][] = [];
+    
+    // Group images into rows
+    for (let i = 0; i < images.length; i += columnCount) {
+      const row = images.slice(i, i + columnCount);
+      rows.push(row);
+    }
+    
+    return rows;
+  }, [images, getColumnCount, useVirtualization]);
+  
+  // Calculate row heights for virtualization
+  const getRowHeight = useCallback((index: number) => {
+    // Base height based on thumbnail size
+    const baseHeight = {
+      small: 200,
+      medium: 250,
+      large: 300,
+      xl: 400
+    }[thumbnailSize] || 250;
+    
+    // Add some variation for masonry effect
+    const variation = (index % 3) * 50;
+    return baseHeight + variation + 16; // Add margin
+  }, [thumbnailSize]);
 
   // Initialize image refs and setup intersection observer
   useEffect(() => {
@@ -492,8 +563,117 @@ const ImageGrid: React.FC<ImageGridProps> = ({
     );
   };
 
+  // Virtualized row renderer
+  const VirtualizedRow = useCallback(({ index, style }: any) => {
+    const rowImages = virtualizedData[index];
+    if (!rowImages || rowImages.length === 0) {
+      return <div style={style} />;
+    }
+
+    return (
+      <div style={style}>
+        <Masonry
+          breakpointCols={getColumnCount()}
+          className="my-masonry-grid"
+          columnClassName="my-masonry-grid_column"
+        >
+          {rowImages.map((image) => {
+            let ref = imageRefs.current.get(image.id);
+            if (!ref) {
+              ref = React.createRef<HTMLDivElement>();
+              imageRefs.current.set(image.id, ref);
+            }
+
+            const isSelected = clickedImageId === image.id;
+
+            return (
+              <div key={image.id} className="masonry-item">
+                <div
+                  ref={ref}
+                  className="rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-800 shadow-sm hover:shadow-md relative group w-full"
+                  onClick={() => handleImageClick(image, ref)}
+                  onMouseEnter={() => setHoveredImageId(image.id)}
+                  onMouseLeave={() => setHoveredImageId(null)}
+                  style={{
+                    opacity: isSelected ? 0 : 1,
+                    visibility: isSelected ? "hidden" : "visible",
+                    pointerEvents: isAnimating ? "none" : "auto",
+                  }}
+                >
+                  <div className="relative">
+                    <ImageRenderer
+                      image={image}
+                      alt="UI Screenshot"
+                      className="w-full h-auto object-cover rounded-t-lg"
+                      controls={false}
+                      autoPlay={false}
+                      preloader={preloader}
+                    />
+
+                    <AnimatePresence>
+                      {hoveredImageId === image.id && (
+                        <motion.div
+                          id={`pattern-tags-${image.id}`}
+                          className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          style={{
+                            bottom: "-2px",
+                            pointerEvents: "none",
+                          }}
+                        >
+                          <div className="pointer-events-auto">
+                            {renderPatternTags(image)}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Video indicator icon */}
+                    {image.type === "video" && (
+                      <div className="absolute bottom-2 right-2 bg-black/70 p-1 rounded text-white text-xs z-10">
+                        <svg
+                          className="w-4 h-4"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                            clipRule="evenodd"
+                          ></path>
+                        </svg>
+                      </div>
+                    )}
+
+                    {onImageDelete && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full h-6 w-6 bg-black/60 text-white hover:text-white hover:bg-black/80"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteImage(image.id);
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </Masonry>
+      </div>
+    );
+  }, [virtualizedData, getColumnCount, imageRefs, clickedImageId, isAnimating, hoveredImageId, preloader, onImageDelete, handleImageClick, renderPatternTags, handleDeleteImage]);
+
   return (
     <div
+      ref={containerRef}
       className={`w-full px-4 pb-4 flex-1 flex flex-col ${images.length === 0 && !searchQuery ? "overflow-hidden" : ""}`}
     >
       {/* Debug info - remove in production */}
@@ -519,101 +699,115 @@ const ImageGrid: React.FC<ImageGridProps> = ({
             className="w-full"
             style={{ maxWidth: "none" }}
           >
-            <Masonry
-              breakpointCols={breakpointColumnsObj}
-              className="my-masonry-grid"
-              columnClassName="my-masonry-grid_column"
-            >
-              {images.map((image) => {
-                let ref = imageRefs.current.get(image.id);
-                if (!ref) {
-                  ref = React.createRef<HTMLDivElement>();
-                  imageRefs.current.set(image.id, ref);
-                }
+            {useVirtualization && containerSize.height > 0 ? (
+              <List
+                ref={listRef}
+                height={containerSize.height}
+                itemCount={virtualizedData.length}
+                itemSize={getRowHeight}
+                width={containerSize.width}
+                className="virtualized-masonry"
+                overscanCount={2}
+              >
+                {VirtualizedRow}
+              </List>
+            ) : (
+              <Masonry
+                breakpointCols={breakpointColumnsObj}
+                className="my-masonry-grid"
+                columnClassName="my-masonry-grid_column"
+              >
+                {images.map((image) => {
+                  let ref = imageRefs.current.get(image.id);
+                  if (!ref) {
+                    ref = React.createRef<HTMLDivElement>();
+                    imageRefs.current.set(image.id, ref);
+                  }
 
-                const isSelected = clickedImageId === image.id;
+                  const isSelected = clickedImageId === image.id;
 
-                return (
-                  <div key={image.id} className="masonry-item">
-                    <div
-                      ref={ref}
-                      className="rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-800 shadow-sm hover:shadow-md relative group w-full"
-                      onClick={() => handleImageClick(image, ref)}
-                      onMouseEnter={() => setHoveredImageId(image.id)}
-                      onMouseLeave={() => setHoveredImageId(null)}
-                      style={{
-                        opacity: isSelected ? 0 : 1,
-                        visibility: isSelected ? "hidden" : "visible",
-                        pointerEvents: isAnimating ? "none" : "auto",
-                      }}
-                    >
-                      <div className="relative">
-                        <ImageRenderer
-                          image={image}
-                          alt="UI Screenshot"
-                          className="w-full h-auto object-cover rounded-t-lg"
-                          controls={false}
-                          autoPlay={false}
-                          preloader={preloader}
-                        />
+                  return (
+                    <div key={image.id} className="masonry-item">
+                      <div
+                        ref={ref}
+                        className="rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-800 shadow-sm hover:shadow-md relative group w-full"
+                        onClick={() => handleImageClick(image, ref)}
+                        onMouseEnter={() => setHoveredImageId(image.id)}
+                        onMouseLeave={() => setHoveredImageId(null)}
+                        style={{
+                          opacity: isSelected ? 0 : 1,
+                          visibility: isSelected ? "hidden" : "visible",
+                          pointerEvents: isAnimating ? "none" : "auto",
+                        }}
+                      >
+                        <div className="relative">
+                          <ImageRenderer
+                            image={image}
+                            alt="UI Screenshot"
+                            className="w-full h-auto object-cover rounded-t-lg"
+                            controls={false}
+                            autoPlay={false}
+                            preloader={preloader}
+                          />
 
-                        <AnimatePresence>
-                          {hoveredImageId === image.id && (
-                            <motion.div
-                              id={`pattern-tags-${image.id}`}
-                              className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent"
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: 10 }}
-                              style={{
-                                bottom: "-2px",
-                                pointerEvents: "none",
+                          <AnimatePresence>
+                            {hoveredImageId === image.id && (
+                              <motion.div
+                                id={`pattern-tags-${image.id}`}
+                                className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 10 }}
+                                style={{
+                                  bottom: "-2px",
+                                  pointerEvents: "none",
+                                }}
+                              >
+                                <div className="pointer-events-auto">
+                                  {renderPatternTags(image)}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+
+                          {/* Video indicator icon */}
+                          {image.type === "video" && (
+                            <div className="absolute bottom-2 right-2 bg-black/70 p-1 rounded text-white text-xs z-10">
+                              <svg
+                                className="w-4 h-4"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                                  clipRule="evenodd"
+                                ></path>
+                              </svg>
+                            </div>
+                          )}
+
+                          {onImageDelete && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full h-6 w-6 bg-black/60 text-white hover:text-white hover:bg-black/80"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteImage(image.id);
                               }}
                             >
-                              <div className="pointer-events-auto">
-                                {renderPatternTags(image)}
-                              </div>
-                            </motion.div>
+                              <X className="h-3 w-3" />
+                            </Button>
                           )}
-                        </AnimatePresence>
-
-                        {/* Video indicator icon */}
-                        {image.type === "video" && (
-                          <div className="absolute bottom-2 right-2 bg-black/70 p-1 rounded text-white text-xs z-10">
-                            <svg
-                              className="w-4 h-4"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                              xmlns="http://www.w3.org/2000/svg"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                                clipRule="evenodd"
-                              ></path>
-                            </svg>
-                          </div>
-                        )}
-
-                        {onImageDelete && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full h-6 w-6 bg-black/60 text-white hover:text-white hover:bg-black/80"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteImage(image.id);
-                            }}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </Masonry>
+                  );
+                })}
+              </Masonry>
+            )}
           </motion.div>
 
           <AnimatedImageModal
