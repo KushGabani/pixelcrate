@@ -9,7 +9,7 @@ Built by [@gustavscirulis](https://github.com/gustavscirulis), enhanced by [@kus
 ## Features
 
 - **Screenshot Management** – Collect and organize your UI screenshots in a visual grid layout
-- **AI-Powered Pattern Detection** – Identify UI components and patterns using OpenAI's Vision API
+- **AI-Powered Pattern Detection** – Identify UI components and patterns using Gemini's 2.5 Flash Lite Model
 - **Smart Organization** – Search and filter your screenshots based on detected UI elements
 - **Fast Local Storage** – All screenshots and metadata are stored locally and can be synced with iCloud
 
@@ -31,7 +31,7 @@ To use the AI pattern detection feature, you'll need to add your Gemini API key 
 PixelCrate is built with privacy in mind:
 
 - **Local-first by design**: All screenshots, metadata, and app data are stored locally on your device. Nothing is uploaded or stored remotely.
-- **Optional AI analysis**: If enabled, screenshots are temporarily sent to OpenAI's Vision API for pattern detection. This feature is optional and can be turned off at any time in the settings.
+- **Optional AI analysis**: If enabled, screenshots are temporarily sent to Gemini's Vision API for pattern detection. This feature is optional and can be turned off at any time in the settings.
 - **Anonymous usage analytics**: PixelCrate collects basic, anonymous usage stats and crash reports to help improve the app. No personal data or screenshots are ever collected. You can opt out of tracking in the settings.
 
 ## File storage
