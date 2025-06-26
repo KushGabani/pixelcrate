@@ -4,7 +4,7 @@ PixelCrate is an open-source desktop app for collecting, organizing, and analyzi
 
 ![PixelCrate Preview](assets/preview.png)
 
-Built by [@gustavscirulis](https://github.com/gustavscirulis), enhanced by [@kushgabani](https://github.com/kushgabani)
+Kickstarted by [@gustavscirulis](https://github.com/gustavscirulis), built/upgraded by [@kushgabani](https://github.com/kushgabani)
 
 ## Features
 
