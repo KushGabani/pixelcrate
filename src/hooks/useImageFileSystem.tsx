@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { getVideoDimensions } from '../lib/videoUtils';
 import { sendAnalyticsEvent } from "@/services/analyticsService";
+import { useActiveFolder } from "@/contexts/ActiveFolderContext";
 import { ImageItem } from "./useImageStore";
 
 export interface UseImageFileSystemReturn {
@@ -31,6 +32,7 @@ const getFilenameFromPath = (filePath: string): string => {
 
 export function useImageFileSystem(): UseImageFileSystemReturn {
   const [isUploading, setIsUploading] = useState(false);
+  const { activeFolder, ensureDefaultFolder } = useActiveFolder();
 
   const readFileAsDataURL = useCallback((file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -52,9 +54,23 @@ export function useImageFileSystem(): UseImageFileSystemReturn {
 
   const saveMediaToDisk = useCallback(async (media: ImageItem, dataUrl: string): Promise<string | undefined> => {
     try {
+      // Get the active folder path or ensure default folder exists
+      let folderPath = activeFolder?.path;
+      if (!folderPath) {
+        try {
+          const defaultFolder = await ensureDefaultFolder();
+          folderPath = defaultFolder.path;
+        } catch (error) {
+          console.error('Failed to get active folder path:', error);
+          // Let the backend use the default images directory
+          folderPath = undefined;
+        }
+      }
+
       const result = await window.electron.saveImage({
         id: media.id,
         dataUrl: dataUrl,
+        folderPath: folderPath, // Pass the active folder path
         metadata: {
           width: media.width,
           height: media.height,
@@ -77,7 +93,7 @@ export function useImageFileSystem(): UseImageFileSystemReturn {
       toast.error("Failed to save media to disk");
       return undefined;
     }
-  }, []);
+  }, [activeFolder, ensureDefaultFolder]);
 
   const addImageFromFile = useCallback(async (
     file: File,
@@ -203,10 +219,24 @@ export function useImageFileSystem(): UseImageFileSystemReturn {
           }
         }
         
+        // Get the active folder path or ensure default folder exists
+        let folderPath = activeFolder?.path;
+        if (!folderPath) {
+          try {
+            const defaultFolder = await ensureDefaultFolder();
+            folderPath = defaultFolder.path;
+          } catch (error) {
+            console.error('Failed to get active folder path:', error);
+            // Let the backend use the default images directory
+            folderPath = undefined;
+          }
+        }
+
         // Save to disk directly using the file path
         const result = await window.electron.saveImage({
           id: media.id,
           dataUrl: filePath, // Use the file path directly
+          folderPath: folderPath, // Pass the active folder path
           metadata: {
             width: media.width,
             height: media.height,
@@ -275,7 +305,7 @@ export function useImageFileSystem(): UseImageFileSystemReturn {
       toast.error("Failed to import file: " + (error instanceof Error ? error.message : 'Unknown error'));
       setIsUploading(false);
     }
-  }, [getImageDimensions]);
+  }, [getImageDimensions, activeFolder, ensureDefaultFolder]);
 
   return {
     isUploading,

@@ -366,7 +366,7 @@ const QueueSection = () => {
           </h3>
           <p className="text-xs text-gray-600 dark:text-gray-400 select-none">
             Save images from your phone to the queue folder and they'll
-            automatically import when you open SnapGrid.
+            automatically import when you open PixelCrate.
           </p>
         </div>
 
@@ -374,7 +374,7 @@ const QueueSection = () => {
           <div className="text-xs text-gray-600 dark:text-gray-400 select-none">
             <p>Queue folder location:</p>
             <code className="block text-[11px] bg-gray-100 dark:bg-zinc-800 px-2 py-1 rounded text-gray-800 dark:text-gray-200 font-mono mt-1">
-              iCloud Drive/Documents/SnapGrid/queue/
+              iCloud Drive/Documents/PixelCrate/queue/
             </code>
           </div>
         </div>

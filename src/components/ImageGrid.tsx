@@ -18,6 +18,7 @@ import "./text-shine.css"; // Import the text shine animation CSS
 import { hasApiKey } from "@/services/aiAnalysisService";
 import { useDragContext } from "./UploadZone";
 import { useImagePreloader } from "@/hooks/useImagePreloader";
+import { EmptyState } from "./EmptyState";
 
 interface ImageGridProps {
   images: ImageItem[];
@@ -493,7 +494,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({
 
   return (
     <div
-      className={`w-full px-4 pb-4 flex-1 flex flex-col bg-gray-100 dark:bg-zinc-900 ${images.length === 0 && !searchQuery ? "overflow-hidden" : ""}`}
+      className={`w-full px-4 pb-4 flex-1 flex flex-col ${images.length === 0 && !searchQuery ? "overflow-hidden" : ""}`}
     >
       {/* Debug info - remove in production */}
       <div className="hidden">{`Images: ${images.length}, HasKey: ${hasOpenAIKey}, IsSearching: ${searchQuery !== ""}`}</div>
@@ -507,33 +508,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({
               </p>
             </div>
           ) : (
-            <>
-              {/* Background masonry grid */}
-              <div className="absolute inset-0 pt-20 pb-4 px-4 overflow-hidden bg-gray-100 dark:bg-zinc-900">
-                {renderEmptyStatePlaceholders()}
-              </div>
-
-              {/* Fixed centered card */}
-              <div
-                className="fixed top-0 left-0 right-0 bottom-0 flex items-center justify-center pointer-events-none z-[100]"
-                style={{ paddingTop: "20px" }}
-              >
-                <AnimatePresence>
-                  {!settingsOpen && (
-                    <motion.div
-                      className="max-w-lg w-full mx-4 pointer-events-auto"
-                      style={{ marginTop: "-50px" }}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 20 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      {renderEmptyStateCard()}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </>
+            <EmptyState />
           )}
         </div>
       ) : (

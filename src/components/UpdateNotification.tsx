@@ -23,7 +23,7 @@ const UpdateNotification: React.FC<UpdateNotificationProps> = ({ className = '' 
         if (!updateAvailable) {
           toast({
             title: "No Updates Available",
-            description: "You're running the latest version of SnapGrid.",
+            description: "You're running the latest version of PixelCrate.",
             duration: 3000,
           });
         }

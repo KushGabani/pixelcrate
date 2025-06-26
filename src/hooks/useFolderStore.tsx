@@ -5,7 +5,6 @@ import { ImageItem } from "./useImageStore";
 export interface Folder {
   id: string;
   name: string;
-  parentId?: string;
   color?: string;
   description?: string;
   createdAt: Date;
@@ -39,12 +38,11 @@ export interface UseFolderStoreReturn {
   folders: Folder[];
   isLoading: boolean;
   folderStats: Map<string, FolderStats>;
-  createFolder: (name: string, parentId?: string, color?: string) => Promise<Folder | null>;
+  createFolder: (name: string, color?: string) => Promise<Folder | null>;
   updateFolder: (id: string, updates: Partial<Folder>) => Promise<boolean>;
   deleteFolder: (id: string) => Promise<boolean>;
-  moveFolder: (folderId: string, newParentId?: string) => Promise<boolean>;
   getFolderPath: (folderId: string) => string[];
-  getFolderChildren: (parentId?: string) => Folder[];
+  getFolderChildren: () => Folder[];
   getSmartFolderItems: (folderId: string, allImages: ImageItem[]) => ImageItem[];
   addImageToFolder: (imageId: string, folderId: string) => Promise<boolean>;
   removeImageFromFolder: (imageId: string) => Promise<boolean>;
@@ -98,12 +96,11 @@ export function useFolderStore(): UseFolderStoreReturn {
     }
   }, []);
 
-  const createFolder = useCallback(async (name: string, parentId?: string, color?: string): Promise<Folder | null> => {
+  const createFolder = useCallback(async (name: string, color?: string): Promise<Folder | null> => {
     try {
       const newFolder: Folder = {
         id: `folder_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         name,
-        parentId,
         color,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -159,13 +156,6 @@ export function useFolderStore(): UseFolderStoreReturn {
         return false;
       }
 
-      // Check if folder has children
-      const hasChildren = folders.some(f => f.parentId === id);
-      if (hasChildren) {
-        toast.error("Cannot delete folder with subfolders");
-        return false;
-      }
-
       const success = await window.electron?.deleteFolder?.(id);
       if (!success) {
         throw new Error('Failed to delete folder');
@@ -181,57 +171,14 @@ export function useFolderStore(): UseFolderStoreReturn {
     }
   }, [folders]);
 
-  const moveFolder = useCallback(async (folderId: string, newParentId?: string): Promise<boolean> => {
-    try {
-      // Prevent moving folder into itself or its descendants
-      if (newParentId) {
-        const wouldCreateCycle = (checkId: string): boolean => {
-          if (checkId === folderId) return true;
-          const parent = folders.find(f => f.id === checkId)?.parentId;
-          return parent ? wouldCreateCycle(parent) : false;
-        };
-
-        if (wouldCreateCycle(newParentId)) {
-          toast.error("Cannot move folder into itself or its subfolder");
-          return false;
-        }
-      }
-
-      const success = await window.electron?.moveFolder?.(folderId, newParentId);
-      if (!success) {
-        throw new Error('Failed to move folder');
-      }
-
-      setFolders(prev => prev.map(folder =>
-        folder.id === folderId
-          ? { ...folder, parentId: newParentId, updatedAt: new Date() }
-          : folder
-      ));
-
-      return true;
-    } catch (error) {
-      console.error("Failed to move folder:", error);
-      toast.error("Failed to move folder");
-      return false;
-    }
-  }, [folders]);
 
   const getFolderPath = useCallback((folderId: string): string[] => {
-    const path: string[] = [];
-    let currentId: string | undefined = folderId;
-
-    while (currentId) {
-      const folder = folders.find(f => f.id === currentId);
-      if (!folder) break;
-      path.unshift(folder.name);
-      currentId = folder.parentId;
-    }
-
-    return path;
+    const folder = folders.find(f => f.id === folderId);
+    return folder ? [folder.name] : [];
   }, [folders]);
 
-  const getFolderChildren = useCallback((parentId?: string): Folder[] => {
-    return folders.filter(folder => folder.parentId === parentId);
+  const getFolderChildren = useCallback((): Folder[] => {
+    return folders; // All folders are root level now
   }, [folders]);
 
   const getSmartFolderItems = useCallback((folderId: string, allImages: ImageItem[]): ImageItem[] => {
@@ -345,7 +292,6 @@ export function useFolderStore(): UseFolderStoreReturn {
     createFolder,
     updateFolder,
     deleteFolder,
-    moveFolder,
     getFolderPath,
     getFolderChildren,
     getSmartFolderItems,

@@ -17,7 +17,7 @@ const getAppVersion = (): string => {
 };
 
 const CURRENT_VERSION = getAppVersion();
-const GITHUB_REPO = 'gustavscirulis/snapgrid'; // Updated to use the actual repo name
+const GITHUB_REPO = 'gustavscirulis/pixelcrate'; // Updated to use the actual repo name
 const CHECK_INTERVAL = 1000 * 60 * 60 * 24; // Check once per day
 
 export const checkForUpdates = async (): Promise<GitHubRelease | null> => {

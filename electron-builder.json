@@ -1,6 +1,6 @@
 {
-  "appId": "com.snapgrid.app",
-  "productName": "SnapGrid",
+  "appId": "com.pixelcrate.app",
+  "productName": "PixelCrate",
   "directories": {
     "output": "release/"
   },
