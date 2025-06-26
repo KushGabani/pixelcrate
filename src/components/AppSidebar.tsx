@@ -102,12 +102,12 @@ export function AppSidebar() {
     loadFileSystemFolders();
   }, [loadFileSystemFolders]);
 
-  // Ensure default folder exists when component mounts
+  // Ensure default folder exists and reload file system folders when component mounts
   useEffect(() => {
     const initializeDefault = async () => {
       try {
         await ensureDefaultFolder();
-        // Reload folders to show the default folder
+        // Reload folders to show all available folders including the default
         await loadFileSystemFolders();
       } catch (error) {
         console.error("Failed to initialize default folder:", error);
