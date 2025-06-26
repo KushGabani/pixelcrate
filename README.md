@@ -4,7 +4,7 @@ PixelCrate is an open-source desktop app for collecting, organizing, and analyzi
 
 ![PixelCrate Preview](assets/preview.png)
 
-It's built by [@gustavscirulis](https://github.com/gustavscirulis), and all of the code is entirely AI-generated.
+Built by [@gustavscirulis](https://github.com/gustavscirulis), enhanced by [@kushgabani](https://github.com/kushgabani)
 
 ## Features
 
@@ -88,11 +88,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## License
 
 This project is licensed under the GNU General Public License v3.0 (GPL-3.0) - see the LICENSE file for details. This license ensures that all modifications to this code remain open source.
-
-## Acknowledgments
-
-- Thanks to [Cursor](https://cursor.com) and [Loveable](https://loveable.dev) teams for building the AI code generation tools that made this project possible
-- Thanks to [Midjourney](https://www.midjourney.com/) for the app icon
-- Thanks to OpenAI for their Vision API that powers the pattern detection
-- Built with [Electron](https://www.electronjs.org/) and [React](https://reactjs.org/)
-- UI components from [shadcn/ui](https://ui.shadcn.com/)

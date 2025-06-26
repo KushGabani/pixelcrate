@@ -282,21 +282,14 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="pt-8">
+      <SidebarHeader className="pt-12">
         <div className="flex items-center space-x-2">
           {/* Placeholder for the app icon, similar to the reference */}
-          <svg
+          <img
+            src="/assets/logo.png"
+            alt="PixelCrate logo"
             className="h-7 w-7 text-emerald-500"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              fillRule="evenodd"
-              clipRule="evenodd"
-              d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM8.62061 8.35123C8.84439 7.55837 9.55726 7 10.4 7H13.6C15.0376 7 16.2 8.16244 16.2 9.6C16.2 10.6445 15.6318 11.5791 14.7508 12.0692C15.5422 12.4417 16 13.1593 16 14C16 15.1046 15.1046 16 14 16H10.5C9.67157 16 9 15.3284 9 14.5V14.5C9 13.6716 9.67157 13 10.5 13H13.5C14.3284 13 15 12.3284 15 11.5C15 10.6716 14.3284 10 13.5 10H10.4C9.55622 10 8.84274 9.44283 8.62061 8.64877L8.62061 8.35123Z"
-            />
-          </svg>
+          />
           <span className="font-semibold text-lg">PixelCrate</span>
         </div>
       </SidebarHeader>
