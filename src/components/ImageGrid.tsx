@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { ImageItem } from "@/hooks/useImageStore";
 import {
   X,
@@ -10,7 +10,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AnimatedImageModal from "./AnimatedImageModal";
-import { motion, AnimatePresence } from "framer-motion";
+import { m as motion, AnimatePresence } from "framer-motion";
+import {
+  useReducedMotion,
+  createSlideVariants,
+  createFadeVariants,
+} from "@/lib/motion";
 import { ImageRenderer } from "@/components/ImageRenderer";
 import Masonry from "react-masonry-css";
 import "./masonry-grid.css"; // We'll create this CSS file
@@ -19,6 +24,7 @@ import { hasApiKey } from "@/services/aiAnalysisService";
 import { useDragContext } from "./UploadZone";
 import { useImagePreloader } from "@/hooks/useImagePreloader";
 import { EmptyState } from "./EmptyState";
+import { useDebouncedBatchedUpdates } from "@/hooks/useDebounce";
 
 interface ImageGridProps {
   images: ImageItem[];
@@ -54,16 +60,38 @@ const ImageGrid: React.FC<ImageGridProps> = ({
     null,
   );
 
+  // Debounced hover handlers with 100ms delay
+  const debouncedSetHoveredImage = useDebouncedBatchedUpdates(
+    useCallback((imageId: string | null) => {
+      setHoveredImageId(imageId);
+    }, []),
+    100,
+  );
+
+  const handleMouseEnter = useCallback(
+    (imageId: string) => {
+      debouncedSetHoveredImage(imageId);
+    },
+    [debouncedSetHoveredImage],
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    debouncedSetHoveredImage(null);
+  }, [debouncedSetHoveredImage]);
+
   // Image refs for animations
+  // Use reduced motion hook
+  const prefersReducedMotion = useReducedMotion();
+
   const imageRefs = useRef<Map<string, React.RefObject<HTMLDivElement>>>(
     new Map(),
   );
 
-  // Initialize image preloader - preloads everything so settings are less critical
+  // Initialize optimized image preloader with throttling
   const preloader = useImagePreloader(images, {
-    rootMargin: "1000px",
+    rootMargin: "800px", // Reduced margin for more conservative loading
     threshold: 0.1,
-    preloadDistance: 5, // Reduced since everything gets preloaded anyway
+    preloadDistance: 3, // Only preload a few critical images initially
   });
 
   // Get drag context with fallback for when context is not available
@@ -272,35 +300,6 @@ const ImageGrid: React.FC<ImageGridProps> = ({
   };
 
   const renderPatternTags = (item: ImageItem) => {
-    if (!item.patterns || item.patterns.length === 0) {
-      if (item.isAnalyzing) {
-        return (
-          <div className="inline-flex items-center gap-1 text-xs text-primary-background bg-secondary px-2 py-1 rounded-md">
-            <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
-            <span className="text-shine">Analyzing...</span>
-          </div>
-        );
-      }
-      if (item.error) {
-        return (
-          <div
-            className="inline-flex items-center gap-1 text-xs text-destructive-foreground bg-destructive/80 px-2 py-1 rounded-md hover:bg-destructive transition-all duration-200 hover:shadow-sm active:bg-destructive/90"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (retryAnalysis) {
-                retryAnalysis(item.id);
-              }
-            }}
-            title="Click to retry analysis"
-          >
-            <AlertTriangle className="w-3 h-3" />
-            <span>Analysis failed</span>
-          </div>
-        );
-      }
-      return null;
-    }
-
     // Check if pill click analysis is enabled
     const isPillClickAnalysisEnabled =
       localStorage.getItem("dev_enable_pill_click_analysis") === "true";
@@ -317,7 +316,27 @@ const ImageGrid: React.FC<ImageGridProps> = ({
       );
     }
 
-    return (
+    // Handle error state
+    if (item.error) {
+      return (
+        <div
+          className="inline-flex items-center gap-1 text-xs text-destructive-foreground bg-destructive/80 px-2 py-1 rounded-md hover:bg-destructive transition-all duration-200 hover:shadow-sm active:bg-destructive/90"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (retryAnalysis) {
+              retryAnalysis(item.id);
+            }
+          }}
+          title="Click to retry analysis"
+        >
+          <AlertTriangle className="w-3 h-3" />
+          <span>Analysis failed</span>
+        </div>
+      );
+    }
+
+    // Handle patterns or no patterns case
+    return item.patterns && item.patterns.length > 0 ? (
       <div className="flex flex-wrap gap-1">
         {/* Show image summary as the first pill */}
         {item.patterns[0]?.imageSummary && (
@@ -365,7 +384,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({
             </span>
           ))}
       </div>
-    );
+    ) : null;
   };
 
   // Memoize placeholder heights to prevent constant re-rendering
@@ -539,8 +558,8 @@ const ImageGrid: React.FC<ImageGridProps> = ({
                       ref={ref}
                       className="rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-800 shadow-sm hover:shadow-md relative group w-full"
                       onClick={() => handleImageClick(image, ref)}
-                      onMouseEnter={() => setHoveredImageId(image.id)}
-                      onMouseLeave={() => setHoveredImageId(null)}
+                      onMouseEnter={() => handleMouseEnter(image.id)}
+                      onMouseLeave={handleMouseLeave}
                       style={{
                         opacity: isSelected ? 0 : 1,
                         visibility: isSelected ? "hidden" : "visible",
@@ -562,12 +581,18 @@ const ImageGrid: React.FC<ImageGridProps> = ({
                             <motion.div
                               id={`pattern-tags-${image.id}`}
                               className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent"
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: 10 }}
+                              {...createSlideVariants(
+                                prefersReducedMotion,
+                                "up",
+                                10,
+                              )}
                               style={{
                                 bottom: "-2px",
                                 pointerEvents: "none",
+                                // Force GPU acceleration
+                                transform: "translate3d(0, 0, 0)",
+                                willChange: "transform, opacity",
+                                backfaceVisibility: "hidden",
                               }}
                             >
                               <div className="pointer-events-auto">

@@ -8,8 +8,11 @@
 .logo {
   height: 6em;
   padding: 1.5em;
-  will-change: filter;
+  will-change: filter, transform;
   transition: filter 300ms;
+  /* Force GPU acceleration */
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
 }
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
@@ -20,10 +23,10 @@
 
 @keyframes logo-spin {
   from {
-    transform: rotate(0deg);
+    transform: translate3d(0, 0, 0) rotate(0deg);
   }
   to {
-    transform: rotate(360deg);
+    transform: translate3d(0, 0, 0) rotate(360deg);
   }
 }
 

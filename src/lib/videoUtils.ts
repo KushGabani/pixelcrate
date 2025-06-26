@@ -1,3 +1,135 @@
+/**
+ * LRU Cache implementation for video metadata
+ */
+class VideoMetadataLRUCache<K, V> {
+  private cache = new Map<K, V>();
+  private readonly maxSize: number;
+  private readonly maxMemoryMB: number;
+
+  constructor(maxSize: number, maxMemoryMB: number = 100) {
+    this.maxSize = maxSize;
+    this.maxMemoryMB = maxMemoryMB;
+  }
+
+  get(key: K): V | undefined {
+    const value = this.cache.get(key);
+    if (value !== undefined) {
+      // Move to end (mark as recently used)
+      this.cache.delete(key);
+      this.cache.set(key, value);
+    }
+    return value;
+  }
+
+  set(key: K, value: V): void {
+    if (this.cache.has(key)) {
+      // Update existing key (move to end)
+      this.cache.delete(key);
+    } else {
+      // Check if we need to evict entries
+      this.evictIfNeeded();
+    }
+    this.cache.set(key, value);
+  }
+
+  has(key: K): boolean {
+    return this.cache.has(key);
+  }
+
+  delete(key: K): boolean {
+    return this.cache.delete(key);
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+
+  get size(): number {
+    return this.cache.size;
+  }
+
+  // Evict entries if cache is full or memory usage is too high
+  private evictIfNeeded(): void {
+    // Check size limit
+    while (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey !== undefined) {
+        this.cache.delete(firstKey);
+      } else {
+        break;
+      }
+    }
+
+    // Check memory usage
+    const memoryUsage = this.getMemoryUsage();
+    if (memoryUsage > this.maxMemoryMB) {
+      // Evict oldest entries until memory is under limit
+      const entriesToEvict = Math.ceil(this.cache.size * 0.2); // Evict 20% of entries
+      for (let i = 0; i < entriesToEvict && this.cache.size > 0; i++) {
+        const firstKey = this.cache.keys().next().value;
+        if (firstKey !== undefined) {
+          this.cache.delete(firstKey);
+        }
+      }
+    }
+  }
+
+  // Get memory usage estimate in MB
+  getMemoryUsage(): number {
+    let totalSize = 0;
+    for (const [key, value] of this.cache) {
+      // Estimate key size (assuming string keys)
+      totalSize += new Blob([String(key)]).size;
+      
+      // Estimate value size
+      if (typeof value === 'object' && value !== null) {
+        // For video metadata objects, estimate based on posterUrl size
+        const metadata = value as any;
+        if (metadata.posterUrl && typeof metadata.posterUrl === 'string') {
+          // Data URLs can be very large, estimate based on length
+          if (metadata.posterUrl.startsWith('data:')) {
+            totalSize += metadata.posterUrl.length;
+          } else {
+            totalSize += 1024; // Small size for regular URLs
+          }
+        }
+        // Add size for other properties
+        totalSize += new Blob([JSON.stringify({
+          width: metadata.width,
+          height: metadata.height,
+          duration: metadata.duration
+        })]).size;
+      } else {
+        totalSize += new Blob([JSON.stringify(value)]).size;
+      }
+    }
+    return totalSize / (1024 * 1024); // Convert to MB
+  }
+
+  // Get cache statistics
+  getStats(): { size: number; memoryUsage: number; maxSize: number; maxMemoryMB: number } {
+    return {
+      size: this.cache.size,
+      memoryUsage: this.getMemoryUsage(),
+      maxSize: this.maxSize,
+      maxMemoryMB: this.maxMemoryMB
+    };
+  }
+}
+
+// Video metadata cache with LRU eviction
+const VIDEO_METADATA_CACHE_SIZE = 200; // Max number of video metadata entries
+const VIDEO_METADATA_MEMORY_LIMIT_MB = 150; // Max memory usage for video metadata
+
+const videoMetadataCache = new VideoMetadataLRUCache<string, {
+  width: number;
+  height: number;
+  duration: number;
+  posterUrl: string;
+}>(VIDEO_METADATA_CACHE_SIZE, VIDEO_METADATA_MEMORY_LIMIT_MB);
+
+const videoFramesCache = new VideoMetadataLRUCache<string, string[]>(100, 50); // Cache for captured frames
+
 // Helper function to get video dimensions and generate a thumbnail
 export function getVideoDimensions(videoSrc: string): Promise<{
   width: number;
@@ -8,6 +140,13 @@ export function getVideoDimensions(videoSrc: string): Promise<{
   return new Promise((resolve, reject) => {
     if (!videoSrc) {
       reject(new Error('Video source is empty'));
+      return;
+    }
+
+    // Check cache first
+    const cached = videoMetadataCache.get(videoSrc);
+    if (cached) {
+      resolve(cached);
       return;
     }
 
@@ -79,13 +218,19 @@ export function getVideoDimensions(videoSrc: string): Promise<{
           video.removeAttribute('src'); // Use removeAttribute instead of setting to empty string
           video.load(); // Ensure the video element is properly reset
 
-          // Resolve with the video dimensions and poster URL
-          resolve({
+          // Create result object
+          const result = {
             width: video.videoWidth || 640,
             height: video.videoHeight || 360,
             duration: video.duration || 0,
             posterUrl,
-          });
+          };
+
+          // Cache the result
+          videoMetadataCache.set(videoSrc, result);
+
+          // Resolve with the video dimensions and poster URL
+          resolve(result);
         } else {
           reject(new Error('Could not get canvas context'));
         }
@@ -114,6 +259,16 @@ export function captureVideoFrames(
   return new Promise((resolve, reject) => {
     if (!videoSrc) {
       reject(new Error('Video source is empty'));
+      return;
+    }
+
+    // Create a cache key based on video source and percentages
+    const cacheKey = `${videoSrc}:${percentages.join(',')}`;
+    
+    // Check cache first
+    const cached = videoFramesCache.get(cacheKey);
+    if (cached) {
+      resolve(cached);
       return;
     }
 
@@ -190,6 +345,10 @@ export function captureVideoFrames(
       // Clean up
       video.removeAttribute('src');
       video.load();
+      
+      // Cache the frames before resolving
+      videoFramesCache.set(cacheKey, frames);
+      
       resolve(frames);
     }
 
@@ -197,4 +356,100 @@ export function captureVideoFrames(
     video.src = videoSrc;
     video.load();
   });
+}
+
+/**
+ * Cache management functions for video utilities
+ */
+export const videoCacheManager = {
+  // Clear all video caches
+  clearAll(): void {
+    videoMetadataCache.clear();
+    videoFramesCache.clear();
+  },
+
+  // Clear metadata cache only
+  clearMetadata(): void {
+    videoMetadataCache.clear();
+  },
+
+  // Clear frames cache only
+  clearFrames(): void {
+    videoFramesCache.clear();
+  },
+
+  // Get cache statistics
+  getStats(): {
+    metadata: { size: number; memoryUsage: number; maxSize: number; maxMemoryMB: number };
+    frames: { size: number; memoryUsage: number; maxSize: number; maxMemoryMB: number };
+    totalMemoryUsage: number;
+  } {
+    const metadataStats = videoMetadataCache.getStats();
+    const framesStats = videoFramesCache.getStats();
+    
+    return {
+      metadata: metadataStats,
+      frames: framesStats,
+      totalMemoryUsage: metadataStats.memoryUsage + framesStats.memoryUsage
+    };
+  },
+
+  // Check if memory usage is approaching limits and clean up if necessary
+  performMemoryCleanup(): void {
+    const stats = this.getStats();
+    const totalMemoryMB = stats.totalMemoryUsage;
+    const maxTotalMemoryMB = 300; // Total memory limit across all video caches
+
+    if (totalMemoryMB > maxTotalMemoryMB) {
+      console.warn(`Video cache memory usage (${totalMemoryMB.toFixed(2)}MB) exceeds limit (${maxTotalMemoryMB}MB). Performing cleanup.`);
+      
+      // First, try clearing frames cache (usually contains larger data)
+      if (stats.frames.memoryUsage > stats.frames.maxMemoryMB * 0.7) {
+        this.clearFrames();
+      }
+      
+      // If still over limit, clear some metadata entries
+      const newStats = this.getStats();
+      if (newStats.totalMemoryUsage > maxTotalMemoryMB * 0.8) {
+        // Clear oldest 25% of metadata entries
+        const entriesToRemove = Math.ceil(stats.metadata.size * 0.25);
+        let removed = 0;
+        for (const [key] of videoMetadataCache.entries()) {
+          if (removed >= entriesToRemove) break;
+          videoMetadataCache.delete(key);
+          removed++;
+        }
+      }
+    }
+  },
+
+  // Check if a video's metadata is cached
+  hasMetadata(videoSrc: string): boolean {
+    return videoMetadataCache.has(videoSrc);
+  },
+
+  // Check if video frames are cached
+  hasFrames(videoSrc: string, percentages: number[] = [0.33, 0.66]): boolean {
+    const cacheKey = `${videoSrc}:${percentages.join(',')}`;
+    return videoFramesCache.has(cacheKey);
+  },
+
+  // Remove specific video from cache
+  removeVideo(videoSrc: string): void {
+    videoMetadataCache.delete(videoSrc);
+    
+    // Remove any frame caches for this video (they might have different percentages)
+    for (const [key] of videoFramesCache.entries()) {
+      if (key.startsWith(videoSrc + ':')) {
+        videoFramesCache.delete(key);
+      }
+    }
+  }
+};
+
+// Periodic memory cleanup (runs every 5 minutes)
+if (typeof window !== 'undefined') {
+  setInterval(() => {
+    videoCacheManager.performMemoryCleanup();
+  }, 5 * 60 * 1000); // 5 minutes
 }

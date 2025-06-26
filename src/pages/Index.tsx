@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useImageStore, ImageItem } from "@/hooks/useImageStore";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import UploadZone from "@/components/UploadZone";
-import ImageGrid from "@/components/ImageGrid";
+import VirtualizedImageGrid from "@/components/VirtualizedImageGrid";
 import { Search, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -352,7 +352,7 @@ const Index = () => {
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
                 </div>
               ) : (
-                <ImageGrid
+                <VirtualizedImageGrid
                   images={simulateEmptyState ? [] : filteredImages}
                   onImageClick={handleImageClick}
                   onImageDelete={handleDeleteImage}

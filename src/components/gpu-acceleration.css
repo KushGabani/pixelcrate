@@ -1,0 +1,190 @@
+/* GPU Acceleration Optimization CSS */
+
+/* Force GPU acceleration for all animation-related elements */
+.will-change-transform {
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+
+.will-change-opacity {
+  will-change: opacity;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+
+.will-change-transform-opacity {
+  will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+
+/* Override default animations to use transform instead of layout properties */
+@keyframes gpu-fade-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes gpu-slide-in-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes gpu-slide-in-down {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes gpu-scale-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes gpu-scale-out {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.95);
+  }
+}
+
+/* Optimized hover effects using transforms */
+.gpu-hover-lift {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.gpu-hover-lift:hover {
+  transform: translate3d(0, -4px, 0);
+}
+
+.gpu-hover-scale {
+  transition: transform 0.2s ease;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.gpu-hover-scale:hover {
+  transform: translate3d(0, 0, 0) scale(1.02);
+}
+
+/* Force hardware acceleration for Framer Motion elements */
+.framer-motion {
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+/* Optimize modal overlays */
+.modal-overlay {
+  transform: translate3d(0, 0, 0);
+  will-change: opacity;
+  backface-visibility: hidden;
+}
+
+.modal-content {
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+/* Optimize image containers */
+.image-container {
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+  backface-visibility: hidden;
+  contain: layout style paint;
+}
+
+.image-container img,
+.image-container video {
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+/* Optimize masonry items */
+.masonry-item {
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  contain: layout style paint;
+}
+
+/* Override default Tailwind animations */
+.animate-in {
+  animation: gpu-fade-in 0.2s ease-out;
+}
+
+.animate-out {
+  animation: gpu-scale-out 0.2s ease-in;
+}
+
+.fade-in-0 {
+  animation: gpu-fade-in 0.2s ease-out;
+}
+
+.fade-out-0 {
+  animation: gpu-scale-out 0.2s ease-in;
+}
+
+.zoom-in-95 {
+  animation: gpu-scale-in 0.2s ease-out;
+}
+
+.zoom-out-95 {
+  animation: gpu-scale-out 0.2s ease-in;
+}
+
+.slide-in-from-top-\[48\%\] {
+  animation: gpu-slide-in-down 0.2s ease-out;
+}
+
+.slide-out-to-top-\[48\%\] {
+  animation: gpu-slide-in-up 0.2s ease-in reverse;
+}
+
+/* Performance optimizations for scrollable content */
+.scroll-container {
+  transform: translate3d(0, 0, 0);
+  will-change: scroll-position;
+  backface-visibility: hidden;
+  contain: strict;
+}
+
+/* Optimize text animations */
+.text-animate {
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}

@@ -1,18 +1,21 @@
-import React, { useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ExternalLink, X, Download } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useUpdateChecker } from '@/services/updateService';
-import { useToast } from '@/components/ui/use-toast';
+import React, { useEffect } from "react";
+import { m as motion, AnimatePresence } from "framer-motion";
+import { ExternalLink, X, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useUpdateChecker } from "@/services/updateService";
+import { useToast } from "@/components/ui/use-toast";
+import { useReducedMotion, createSlideVariants } from "@/lib/motion";
 
 interface UpdateNotificationProps {
   className?: string;
 }
 
-const UpdateNotification: React.FC<UpdateNotificationProps> = ({ className = '' }) => {
+const UpdateNotification: React.FC<UpdateNotificationProps> = ({
+  className = "",
+}) => {
   const { updateAvailable, checking } = useUpdateChecker();
   const [dismissed, setDismissed] = React.useState(false);
-  const isElectron = window && typeof window.electron !== 'undefined';
+  const isElectron = window && typeof window.electron !== "undefined";
   const { toast } = useToast();
 
   // Handle manual update check completion
@@ -28,15 +31,10 @@ const UpdateNotification: React.FC<UpdateNotificationProps> = ({ className = '' 
           });
         }
       });
-      
+
       return unsubscribe;
     }
   }, [isElectron, updateAvailable, toast]);
-
-  // If there's no update or user dismissed the notification, don't show anything
-  if (!updateAvailable || dismissed || checking) {
-    return null;
-  }
 
   const handleOpenReleasePage = () => {
     // Use Electron's shell to open external links if in Electron context
@@ -44,17 +42,29 @@ const UpdateNotification: React.FC<UpdateNotificationProps> = ({ className = '' 
       window.electron.openUrl(updateAvailable.html_url);
     } else {
       // Fallback for browser environment
-      window.open(updateAvailable.html_url, '_blank');
+      window.open(updateAvailable.html_url, "_blank");
     }
   };
+
+  // Use reduced motion hook
+  const prefersReducedMotion = useReducedMotion();
+
+  // Don't render if there's no update available or if dismissed
+  if (!updateAvailable || dismissed) {
+    return null;
+  }
 
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 50 }}
+        {...createSlideVariants(prefersReducedMotion, "up", 50)}
         className={`fixed bottom-4 right-4 z-50 max-w-sm bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-gray-200 dark:border-zinc-700 overflow-hidden ${className}`}
+        style={{
+          // Force GPU acceleration
+          transform: "translate3d(0, 0, 0)",
+          willChange: "transform, opacity",
+          backfaceVisibility: "hidden",
+        }}
       >
         <div className="p-4">
           <div className="flex justify-between items-start">
@@ -70,11 +80,11 @@ const UpdateNotification: React.FC<UpdateNotificationProps> = ({ className = '' 
               <X className="h-4 w-4" />
             </Button>
           </div>
-          
+
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             A new version has been released. Check out what's new!
           </p>
-          
+
           <div className="mt-4 flex space-x-2">
             <Button
               variant="default"
@@ -85,7 +95,7 @@ const UpdateNotification: React.FC<UpdateNotificationProps> = ({ className = '' 
               <Download className="h-4 w-4" />
               <span>Get Update</span>
             </Button>
-            
+
             <Button
               variant="outline"
               size="sm"

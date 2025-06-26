@@ -20,5 +20,12 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Support for Web Workers with TypeScript
+  worker: {
+    format: 'es',
+    plugins: () => [
+      react()
+    ]
+  },
   base: './', // Always use relative paths to ensure Electron can find assets
 }));

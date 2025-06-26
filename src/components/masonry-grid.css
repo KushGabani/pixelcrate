@@ -14,7 +14,12 @@
 /* Style your items */
 .masonry-item {
   margin-bottom: 16px;
-  will-change: transform;
+  /* Force GPU acceleration with 3D transforms */
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  /* Use hardware acceleration for layout containment */
+  contain: layout style paint;
 }
 
 /* Ensure images fill their container with maximum performance */
@@ -25,19 +30,19 @@
   height: auto;
   max-height: none;
   
-  /* GPU acceleration */
-  transform: translateZ(0);
+  /* Force GPU acceleration with 3D transforms */
+  transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
   perspective: 1000px;
+  
+  /* Performance hints for animations */
+  will-change: transform, opacity;
+  contain: layout style paint;
   
   /* Rendering optimizations */
   image-rendering: -webkit-optimize-contrast;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
-  
-  /* Performance hints */
-  will-change: auto;
-  contain: layout style paint;
   
   /* Prevent layout shifts */
   object-fit: cover;
@@ -46,5 +51,19 @@
 
 /* Style for placeholder items in empty state */
 .masonry-item > div {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-} 
+  /* Use transform instead of layout properties for animations */
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+/* Hover effects using transform and opacity */
+.masonry-item:hover {
+  transform: translate3d(0, -2px, 0);
+}
+
+.masonry-item:hover > div {
+  transform: translate3d(0, 0, 0) scale(1.02);
+  transition: transform 0.2s ease;
+}

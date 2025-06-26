@@ -8,8 +8,16 @@ import { useEffect } from "react";
 import { initializeAnalytics, sendAnalyticsEvent } from "@/services/analyticsService";
 import UpdateNotification from "@/components/UpdateNotification";
 import { ActiveFolderProvider } from "@/contexts/ActiveFolderContext";
+import { MotionProvider } from "@/lib/motion";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import "@/components/gpu-acceleration.css";
+import "@/styles/reduced-motion.css";
+
+// Import image decoder tests for development
+if (process.env.NODE_ENV === 'development') {
+  import('./utils/imageDecoderTest');
+}
 
 const queryClient = new QueryClient();
 
@@ -55,26 +63,28 @@ const App = () => {
     setupAnalytics();
   }, [isElectron]);
   
-  return (
-    <ThemeProvider defaultTheme="dark" storageKey="ui-theme">
-      <QueryClientProvider client={queryClient}>
-        <ActiveFolderProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <UpdateNotification />
-            {/* Use HashRouter for better Electron compatibility */}
-            <HashRouter>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </HashRouter>
-          </TooltipProvider>
-        </ActiveFolderProvider>
-      </QueryClientProvider>
-    </ThemeProvider>
+return (
+    <MotionProvider>
+      <ThemeProvider defaultTheme="dark" storageKey="ui-theme">
+        <QueryClientProvider client={queryClient}>
+          <ActiveFolderProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <UpdateNotification />
+              {/* Use HashRouter for better Electron compatibility */}
+              <HashRouter>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </HashRouter>
+            </TooltipProvider>
+          </ActiveFolderProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </MotionProvider>
   );
 };
 
