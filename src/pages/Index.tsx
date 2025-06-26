@@ -10,6 +10,9 @@ import { Toaster, toast } from "sonner";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import WindowControls from "@/components/WindowControls";
 import { AppSidebar } from "@/components/AppSidebar";
+import { ActiveFolderIndicator } from "@/components/ActiveFolderIndicator";
+import { useActiveFolder } from "@/contexts/ActiveFolderContext";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 const Index = () => {
   const {
@@ -23,6 +26,7 @@ const Index = () => {
     importFromFilePath,
     retryAnalysis,
   } = useImageStore();
+  const { activeFolder } = useActiveFolder();
   const [searchQuery, setSearchQuery] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [simulateEmptyState, setSimulateEmptyState] = useState(false);
@@ -188,6 +192,29 @@ const Index = () => {
 
   const filteredImages = images
     .filter((image) => {
+      // First filter by active folder - if no active folder, show all images
+      if (activeFolder) {
+        // Check if image belongs to the active folder
+        // Images are saved to the active folder, so check the actualFilePath
+        if (image.actualFilePath) {
+          // Normalize paths for comparison
+          const imageFolderPath = image.actualFilePath.substring(
+            0,
+            image.actualFilePath.lastIndexOf("/"),
+          );
+          const activeFolderPath = activeFolder.path;
+
+          // Check if the image is in the active folder (not in subfolders)
+          if (imageFolderPath !== activeFolderPath) {
+            return false;
+          }
+        } else {
+          // If no actualFilePath, this might be an old image, skip it for now
+          return false;
+        }
+      }
+
+      // Then filter by search query
       const query = searchQuery.toLowerCase();
       if (query === "") return true;
 
@@ -278,58 +305,53 @@ const Index = () => {
   const isEmpty = images.length === 0 || simulateEmptyState;
 
   return (
-    <UploadZone onImageUpload={addImage} isUploading={isUploading}>
-      <div
-        className={`min-h-screen flex flex-col pt-8 ${isEmpty ? "overflow-hidden" : ""}`}
-      >
-        <Toaster />
-        <header className="sticky top-0 z-10 backdrop-blur-lg py-4 px-6">
-          <div className="absolute inset-0 draggable"></div>
-          <div className="relative mx-auto flex items-center">
-            <div className="w-8 draggable"></div> {/* Left draggable area */}
-            <div className="flex-1 flex justify-center">
-              <div className="relative w-96 non-draggable">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400 pointer-events-none z-10" />
-                <Input
-                  ref={searchInputRef}
-                  placeholder="Search..."
-                  type="search"
-                  className="pl-9 bg-gray-50 dark:bg-zinc-800 focus:bg-white dark:focus:bg-zinc-700 focus:ring-0 focus:border-gray-300 dark:focus:border-zinc-600"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="flex items-center">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSettingsOpen(true)}
-                className="h-8 w-8 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-zinc-800 non-draggable transition-colors"
-                aria-label="Settings"
-              >
-                <Settings className="h-5 w-5" />
-                <span className="sr-only">Settings</span>
-              </Button>
-            </div>
-          </div>
-          <WindowControls />
-        </header>
+    <div className={`flex min-h-screen ${isEmpty ? "overflow-hidden" : ""}`}>
+      <SidebarProvider>
+        <AppSidebar />
+        <UploadZone onImageUpload={addImage} isUploading={isUploading}>
+          <div className="ml-56 min-h-screen">
+            <Toaster />
+            <WindowControls />
 
-        <div className="flex flex-1 overflow-hidden">
-          <AppSidebar />
-          <main
-            className={`flex-1 flex flex-col min-h-0 w-full ${isEmpty ? "overflow-hidden" : ""}`}
-          >
-            {isLoading ? (
-              <div
-                className="flex justify-center items-center"
-                style={{ height: "calc(100vh - 4rem)" }}
-              >
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <header className="backdrop-blur-lg pt-4 px-6">
+              <div className="relative flex items-center justify-between">
+                <div className="flex-1 flex justify-center">
+                  <div className="relative w-96">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400 pointer-events-none z-10" />
+                    <Input
+                      ref={searchInputRef}
+                      placeholder="Search..."
+                      type="search"
+                      className="pl-9 bg-gray-50 dark:bg-zinc-800 focus:bg-white dark:focus:bg-zinc-700 focus:ring-0 focus:border-gray-300 dark:focus:border-zinc-600"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSettingsOpen(true)}
+                  className="h-8 w-8 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+                  aria-label="Settings"
+                >
+                  <Settings className="h-5 w-5" />
+                </Button>
               </div>
-            ) : (
-              <>
+            </header>
+
+            <div className="border-b border-border/50 bg-background/95 backdrop-blur-sm px-6 py-4">
+              <h1 className="text-2xl font-semibold">
+                {activeFolder ? activeFolder.name : "Images"}
+              </h1>
+            </div>
+
+            <main className={`mt-4 flex-1 ${isEmpty ? "overflow-hidden" : ""}`}>
+              {isLoading ? (
+                <div className="flex justify-center items-center min-h-full">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                </div>
+              ) : (
                 <ImageGrid
                   images={simulateEmptyState ? [] : filteredImages}
                   onImageClick={handleImageClick}
@@ -340,14 +362,14 @@ const Index = () => {
                   retryAnalysis={retryAnalysis}
                   thumbnailSize={thumbnailSize}
                 />
-              </>
-            )}
-          </main>
-        </div>
+              )}
+            </main>
 
-        <SettingsPanel open={settingsOpen} onOpenChange={setSettingsOpen} />
-      </div>
-    </UploadZone>
+            <SettingsPanel open={settingsOpen} onOpenChange={setSettingsOpen} />
+          </div>
+        </UploadZone>
+      </SidebarProvider>
+    </div>
   );
 };
 

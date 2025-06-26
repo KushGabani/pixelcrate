@@ -1,4 +1,4 @@
-# SnapGrid Development Context
+# PixelCrate Development Context
 
 ## Critical Architecture
 
@@ -13,7 +13,7 @@
 
 **File Storage**
 ```
-~/Documents/SnapGrid/
+~/Documents/PixelCrate/
 ├── images/     (PNG/MP4 files)
 ├── metadata/   (JSON, same ID as media)
 ├── .trash/     (auto-emptied)

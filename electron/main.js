@@ -187,7 +187,7 @@ const getAppStorageDir = async () => {
   if (platform === "darwin") {
     // On macOS, try to use Documents folder first for visibility
     const homeDir = os.homedir();
-    storageDir = path.join(homeDir, "Documents", "SnapGrid");
+    storageDir = path.join(homeDir, "Documents", "PixelCrate");
     console.log("Using Documents folder path:", storageDir);
 
     // Create a README file to help users find the folder
@@ -196,7 +196,7 @@ const getAppStorageDir = async () => {
       fs.ensureDirSync(storageDir);
       fs.writeFileSync(
         readmePath,
-        "This folder contains your SnapGrid app images and data.\n" +
+        "This folder contains your PixelCrate app images and data.\n" +
           "Files are stored in the images/ directory with metadata in the metadata/ directory.\n\n" +
           "Storage location: " +
           storageDir,
@@ -249,7 +249,7 @@ async function checkForUpdates() {
     const currentVersion = packageJson.version;
 
     const repoOwner = "gustavscirulis"; // Repository owner
-    const repoName = "snapgrid"; // Repository name
+    const repoName = "pixelcrate"; // Repository name
 
     console.log("Checking for updates. Current version:", currentVersion);
 
@@ -597,7 +597,7 @@ function createApplicationMenu() {
         {
           label: "Learn More",
           click: async () => {
-            await shell.openExternal("https://github.com/snapgrid");
+            await shell.openExternal("https://github.com/gustavscirulis/pixelcrate");
           },
         },
       ],
@@ -727,7 +727,7 @@ ipcMain.handle("open-storage-dir", () => {
   return shell.openPath(appStorageDir);
 });
 
-ipcMain.handle("save-image", async (event, { id, dataUrl, metadata }) => {
+ipcMain.handle("save-image", async (event, { id, dataUrl, metadata, folderPath }) => {
   try {
     // Determine if this is a video or image based on the ID prefix or metadata
     const isVideo = id.startsWith("vid_") || metadata.type === "video";
@@ -735,9 +735,20 @@ ipcMain.handle("save-image", async (event, { id, dataUrl, metadata }) => {
     // Choose the appropriate file extension
     const fileExt = isVideo ? ".mp4" : ".png";
 
-    // Destination paths
-    const imagesDir = path.join(appStorageDir, "images");
-    const filePath = path.join(imagesDir, `${id}${fileExt}`);
+    // Destination paths - use folderPath if provided, otherwise default to images directory
+    let targetDir;
+    if (folderPath && folderPath.trim()) {
+      // Use the specific folder path provided
+      targetDir = folderPath;
+    } else {
+      // Default to images directory
+      targetDir = path.join(appStorageDir, "images");
+    }
+
+    // Ensure target directory exists
+    await fs.ensureDir(targetDir);
+    
+    const filePath = path.join(targetDir, `${id}${fileExt}`);
 
     // Check if dataUrl is a file path rather than a base64 data URL
     const isFilePath = !dataUrl.startsWith("data:");
@@ -762,7 +773,7 @@ ipcMain.handle("save-image", async (event, { id, dataUrl, metadata }) => {
       }
       const buffer = Buffer.from(base64Data, "base64");
 
-      // Save media file with correct extension in the images directory
+      // Save media file with correct extension in the target directory
       await fs.writeFile(filePath, buffer);
     }
 
@@ -774,6 +785,7 @@ ipcMain.handle("save-image", async (event, { id, dataUrl, metadata }) => {
     await fs.writeJson(metadataPath, {
       ...metadata,
       filePath: filePath, // Include actual file path in metadata
+      folderPath: targetDir, // Include folder path in metadata
       type: isVideo ? "video" : "image", // Ensure type is correctly set
     });
 
@@ -785,10 +797,46 @@ ipcMain.handle("save-image", async (event, { id, dataUrl, metadata }) => {
   }
 });
 
+// Helper function to recursively find media files in all subdirectories
+const findMediaFileRecursively = async (id, fileExt, searchDir) => {
+  try {
+    // First, check if file exists in the main search directory
+    const directPath = path.join(searchDir, `${id}${fileExt}`);
+    if (await fs.pathExists(directPath)) {
+      return directPath;
+    }
+
+    // If not found, recursively search all subdirectories
+    const entries = await fs.readdir(searchDir, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const subDirPath = path.join(searchDir, entry.name);
+        const foundPath = await findMediaFileRecursively(id, fileExt, subDirPath);
+        if (foundPath) {
+          return foundPath;
+        }
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    // If directory doesn't exist or can't be read, return null
+    return null;
+  }
+};
+
 // Add the missing load-images handler
 ipcMain.handle("load-images", async () => {
   try {
     const metadataDir = path.join(appStorageDir, "metadata");
+    
+    // Check if metadata directory exists
+    if (!(await fs.pathExists(metadataDir))) {
+      console.log("Metadata directory does not exist yet");
+      return [];
+    }
+    
     const files = await fs.readdir(metadataDir);
     const jsonFiles = files.filter((file) => file.endsWith(".json"));
 
@@ -802,17 +850,31 @@ ipcMain.handle("load-images", async () => {
         // Use appropriate extension
         const fileExt = isVideo ? ".mp4" : ".png";
         const imagesDir = path.join(appStorageDir, "images");
-        const mediaPath = path.join(imagesDir, `${id}${fileExt}`);
-
+        
         try {
-          // Check if both metadata and media file exist
-          if (!(await fs.pathExists(mediaPath))) {
-            console.warn(`Media file not found: ${mediaPath}`);
+          // Load metadata first to get folder information
+          const metadata = await fs.readJson(metadataPath);
+          
+          // Try to find the media file - first check if metadata has folderPath
+          let mediaPath;
+          if (metadata.folderPath && await fs.pathExists(metadata.folderPath)) {
+            // Check if file exists in the specified folder path
+            const folderMediaPath = path.join(metadata.folderPath, `${id}${fileExt}`);
+            if (await fs.pathExists(folderMediaPath)) {
+              mediaPath = folderMediaPath;
+            }
+          }
+          
+          // If not found in metadata folder path, search recursively
+          if (!mediaPath) {
+            mediaPath = await findMediaFileRecursively(id, fileExt, imagesDir);
+          }
+          
+          // Check if media file was found
+          if (!mediaPath) {
+            console.warn(`Media file not found for ID: ${id}`);
             return null;
           }
-
-          // Load metadata
-          const metadata = await fs.readJson(metadataPath);
 
           // Use the local-file protocol for both images and videos
           const localFileUrl = `local-file://${mediaPath}`;
@@ -836,7 +898,9 @@ ipcMain.handle("load-images", async () => {
     );
 
     // Filter out any null entries (failed loads)
-    return images.filter(Boolean);
+    const validImages = images.filter(Boolean);
+    console.log(`Loaded ${validImages.length} images from ${jsonFiles.length} metadata files`);
+    return validImages;
   } catch (error) {
     console.error("Error loading images:", error);
     return [];
@@ -852,8 +916,14 @@ ipcMain.handle("delete-image", async (event, id) => {
 
     const imagesDir = path.join(appStorageDir, "images");
     const metadataDir = path.join(appStorageDir, "metadata");
-    const mediaPath = path.join(imagesDir, `${id}${fileExt}`);
     const metadataPath = path.join(metadataDir, `${id}.json`);
+
+    // Find the actual media file using the recursive search
+    let mediaPath = await findMediaFileRecursively(id, fileExt, imagesDir);
+    
+    if (!mediaPath) {
+      throw new Error(`Media file not found for ID: ${id}`);
+    }
 
     const trashImagesDir = path.join(trashDir, "images");
     const trashMetadataDir = path.join(trashDir, "metadata");
@@ -879,9 +949,7 @@ ipcMain.handle("restore-from-trash", async (event, id) => {
     const isVideo = id.startsWith("vid_");
     const fileExt = isVideo ? ".mp4" : ".png";
 
-    const imagesDir = path.join(appStorageDir, "images");
     const metadataDir = path.join(appStorageDir, "metadata");
-    const mediaPath = path.join(imagesDir, `${id}${fileExt}`);
     const metadataPath = path.join(metadataDir, `${id}.json`);
 
     const trashImagesDir = path.join(trashDir, "images");
@@ -889,11 +957,28 @@ ipcMain.handle("restore-from-trash", async (event, id) => {
     const trashMediaPath = path.join(trashImagesDir, `${id}${fileExt}`);
     const trashMetadataPath = path.join(trashMetadataDir, `${id}.json`);
 
+    // Load metadata from trash to get original folder path
+    const metadata = await fs.readJson(trashMetadataPath);
+    
+    // Determine restoration path - use original folderPath if available
+    let targetDir;
+    if (metadata.folderPath && await fs.pathExists(path.dirname(metadata.folderPath))) {
+      targetDir = metadata.folderPath;
+    } else {
+      // Fallback to default images directory
+      targetDir = path.join(appStorageDir, "images");
+    }
+    
+    // Ensure target directory exists
+    await fs.ensureDir(targetDir);
+    
+    const mediaPath = path.join(targetDir, `${id}${fileExt}`);
+
     // Move files back from trash
     await fs.move(trashMediaPath, mediaPath, { overwrite: true });
     await fs.move(trashMetadataPath, metadataPath, { overwrite: true });
 
-    console.log(`Restored media from trash: ${mediaPath}`);
+    console.log(`Restored media from trash to: ${mediaPath}`);
     return { success: true };
   } catch (error) {
     console.error("Error restoring from trash:", error);

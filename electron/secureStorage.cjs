@@ -23,14 +23,14 @@ class SecureStorage {
       const id = machineId.machineIdSync();
       // Create a deterministic key based on machine ID and a salt
       const hash = crypto.createHash('sha256')
-        .update(id + 'snapgrid-salt-dontchange')
+        .update(id + 'pixelcrate-salt-dontchange')
         .digest('hex');
       return hash;
     } catch (error) {
       console.error('Error generating encryption key:', error);
       // Fallback to a less secure but still somewhat random key
       return crypto.createHash('sha256')
-        .update(os.hostname() + os.userInfo().username + 'snapgrid-salt')
+        .update(os.hostname() + os.userInfo().username + 'pixelcrate-salt')
         .digest('hex');
     }
   }

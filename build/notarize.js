@@ -21,7 +21,7 @@ module.exports = async function notarizing(context) {
   
   try {
     await notarize({
-      appBundleId: 'com.snapgrid.app',
+      appBundleId: 'com.pixelcrate.app',
       appPath,
       appleId: process.env.APPLE_ID,
       appleIdPassword: process.env.APPLE_APP_SPECIFIC_PASSWORD,

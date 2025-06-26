@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { useEffect } from "react";
 import { initializeAnalytics, sendAnalyticsEvent } from "@/services/analyticsService";
 import UpdateNotification from "@/components/UpdateNotification";
+import { ActiveFolderProvider } from "@/contexts/ActiveFolderContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -57,19 +58,21 @@ const App = () => {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="ui-theme">
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <UpdateNotification />
-          {/* Use HashRouter for better Electron compatibility */}
-          <HashRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </HashRouter>
-        </TooltipProvider>
+        <ActiveFolderProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <UpdateNotification />
+            {/* Use HashRouter for better Electron compatibility */}
+            <HashRouter>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </HashRouter>
+          </TooltipProvider>
+        </ActiveFolderProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );
