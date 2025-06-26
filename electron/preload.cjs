@@ -131,6 +131,11 @@ contextBridge.exposeInMainWorld(
     onQueueNewFile: (callback) => {
       ipcRenderer.on('queue:new-file', (_, filePath) => callback(filePath));
       return () => ipcRenderer.removeAllListeners('queue:new-file');
-    }
+    },
+    // Directory management
+    getHomeDirectory: () => ipcRenderer.invoke('get-home-directory'),
+    readDirectory: (dirPath) => ipcRenderer.invoke('read-directory', dirPath),
+    createDirectory: (dirPath) => ipcRenderer.invoke('create-directory', dirPath),
+    deleteDirectory: (dirPath) => ipcRenderer.invoke('delete-directory', dirPath)
   }
 );

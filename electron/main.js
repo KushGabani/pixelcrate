@@ -1259,3 +1259,119 @@ ipcMain.handle("queue:remove-file", async (event, filePath) => {
     return { success: false, error: error.message };
   }
 });
+
+// Directory management handlers
+ipcMain.handle("get-home-directory", async () => {
+  try {
+    const homeDir = os.homedir();
+    console.log("Home directory:", homeDir);
+    return homeDir;
+  } catch (error) {
+    console.error("Error getting home directory:", error);
+    throw error;
+  }
+});
+
+ipcMain.handle("read-directory", async (event, dirPath) => {
+  try {
+    if (!fs.existsSync(dirPath)) {
+      throw new Error("Directory does not exist");
+    }
+
+    const stats = await fs.stat(dirPath);
+    if (!stats.isDirectory()) {
+      throw new Error("Path is not a directory");
+    }
+
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+    const result = [];
+
+    for (const entry of entries) {
+      // Skip hidden files/directories (starting with .)
+      if (entry.name.startsWith('.')) {
+        continue;
+      }
+
+      const fullPath = path.join(dirPath, entry.name);
+      try {
+        const entryStats = await fs.stat(fullPath);
+        result.push({
+          name: entry.name,
+          path: fullPath,
+          isDirectory: entryStats.isDirectory(),
+          isFile: entryStats.isFile(),
+          size: entryStats.size,
+          modified: entryStats.mtime.toISOString()
+        });
+      } catch (statError) {
+        // Skip entries we can't stat (permission issues, etc.)
+        console.warn(`Could not stat ${fullPath}:`, statError.message);
+        continue;
+      }
+    }
+
+    console.log(`Read directory ${dirPath}: found ${result.length} entries`);
+    return result;
+  } catch (error) {
+    console.error("Error reading directory:", error);
+    throw error;
+  }
+});
+
+ipcMain.handle("create-directory", async (event, dirPath) => {
+  try {
+    // Validate the path is safe (not trying to create outside reasonable bounds)
+    const resolvedPath = path.resolve(dirPath);
+    const homeDir = os.homedir();
+    
+    // Only allow creating directories within user's home directory for security
+    if (!resolvedPath.startsWith(homeDir)) {
+      throw new Error("Directory creation outside home directory is not allowed");
+    }
+
+    // Check if directory already exists
+    if (fs.existsSync(resolvedPath)) {
+      throw new Error("Directory already exists");
+    }
+
+    // Create the directory
+    await fs.ensureDir(resolvedPath);
+    console.log("Created directory:", resolvedPath);
+    return true;
+  } catch (error) {
+    console.error("Error creating directory:", error);
+    throw error;
+  }
+});
+
+ipcMain.handle("delete-directory", async (event, dirPath) => {
+  try {
+    // Validate the path is safe
+    const resolvedPath = path.resolve(dirPath);
+    const homeDir = os.homedir();
+    
+    // Only allow deleting directories within user's home directory for security
+    if (!resolvedPath.startsWith(homeDir)) {
+      throw new Error("Directory deletion outside home directory is not allowed");
+    }
+
+    // Check if directory exists
+    if (!fs.existsSync(resolvedPath)) {
+      throw new Error("Directory does not exist");
+    }
+
+    // Ensure it's actually a directory
+    const stats = await fs.stat(resolvedPath);
+    if (!stats.isDirectory()) {
+      throw new Error("Path is not a directory");
+    }
+
+    // Remove the directory
+    await fs.remove(resolvedPath);
+    console.log("Deleted directory:", resolvedPath);
+    return true;
+  } catch (error) {
+    console.error("Error deleting directory:", error);
+    throw error;
+  }
+});
