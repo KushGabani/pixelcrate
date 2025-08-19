@@ -440,11 +440,6 @@ function FolderItem({
         <div className="flex items-center gap-2 flex-grow min-w-0">
           <FolderIcon className="h-4 w-4 flex-shrink-0" />
           <span className="truncate">{folder.name}</span>
-          {isActive && (
-            <span className="text-xs bg-emerald-500 text-white px-1.5 py-0.5 rounded-full ml-1 flex-shrink-0">
-              Active
-            </span>
-          )}
         </div>
         <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
           <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
